@@ -1,108 +1,106 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CCTV App</title>
+  <title>나만의 CCTV</title>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; margin-top: 30px; background-color: #f0f2f5; color: #333; }
-    h1 { color: #1a73e8; }
-    video { width: 90%; max-width: 500px; border-radius: 8px; background-color: #000; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-    #controls { margin-top: 20px; margin-bottom: 20px; }
-    button { padding: 12px 24px; font-size: 16px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-    .btn-cam { background-color: #28a745; color: white; }
-    .btn-view { background-color: #007bff; color: white; }
-    #status { font-weight: bold; color: #555; margin-top: 15px; }
-    #peerIdDisplay { background-color: #fff; padding: 10px; display: inline-block; border-radius: 5px; border: 1px dashed #1a73e8; margin-top: 10px; word-break: break-all; max-width: 80%; }
+    body { font-family: -apple-system, sans-serif; text-align: center; margin-top: 30px; background-color: #f8f9fa; color: #212529; }
+    h1 { color: #0d6efd; font-size: 24px; }
+    video { width: 90%; max-width: 450px; border-radius: 12px; background-color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 10px; }
+    .btn-container { margin: 20px 0; }
+    button { padding: 14px 28px; font-size: 16px; margin: 6px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .btn-cam { background-color: #198754; color: white; }
+    .btn-view { background-color: #0d6efd; color: white; }
+    #status { font-weight: 500; color: #495057; margin: 15px 20px; line-height: 1.5; }
+    #idBox { background-color: #fff; padding: 12px; display: inline-block; border-radius: 6px; border: 2px dashed #0d6efd; margin-top: 10px; word-break: break-all; max-width: 85%; font-size: 14px; font-family: monospace; }
   </style>
 </head>
 <body>
+
   <h1>나만의 모바일 CCTV</h1>
-  <div id="controls">
+  
+  <div class="btn-container">
     <button class="btn-cam" onclick="startCamera()">카메라 모드 (공폰)</button>
     <button class="btn-view" onclick="startViewer()">뷰어 모드 (내폰)</button>
   </div>
+
   <div>
     <video id="videoElement" autoplay muted playsinline></video>
   </div>
-  <p id="status">모드를 선택해 주세요.</p>
-  <div id="peerIdDisplay" style="display:none;"></div>
+
+  <p id="status">원하는 모드 버튼을 눌러주세요.</p>
+  <div id="idBox" style="display:none;"></div>
 
   <script>
     let peer;
     let localStream;
     
-    // 연결을 더 확실하게 만들어주는 구글 무료 STUN 서버 설정
-    const peerConfig = {
+    // 전 세계 기기들을 무조건 연결해주는 무료 공용 STUN/TURN 서버 목록 설정
+    const config = {
       config: {
         'iceServers': [
           { 'urls': 'stun:stun.l.google.com:19302' },
-          { 'urls': 'stun:stun1.l.google.com:19302' }
+          { 'urls': 'stun:stun1.l.google.com:19302' },
+          { 'urls': 'stun:stun2.l.google.com:19302' },
+          { 'urls': 'stun:stun.nextcloud.com:443' },
+          { 'urls': 'stun:relay.metered.ca:80' }
         ]
       }
     };
 
     function startCamera() {
-      document.getElementById('status').innerText = '카메라 권한을 요청 중입니다...';
+      document.getElementById('status').innerText = '카메라를 켜는 중입니다...';
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: true })
         .then(stream => {
           localStream = stream;
           document.getElementById('videoElement').srcObject = stream;
           
-          // 안정적인 설정 적용하여 Peer 생성
-          peer = new Peer(peerConfig);
+          peer = new Peer(config);
           
           peer.on('open', (id) => {
-            const displayDiv = document.getElementById('peerIdDisplay');
+            const displayDiv = document.getElementById('idBox');
             displayDiv.style.display = 'inline-block';
             displayDiv.innerText = id;
-            document.getElementById('status').innerText = '카메라 작동 중! 아래 ID를 복사해서 뷰어 폰에 입력하세요.';
+            document.getElementById('status').innerText = 'CCTV 작동 중! 아래 ID를 꾹 눌러 복사해 내 폰(뷰어)에 넣으세요.';
           });
 
           peer.on('call', (call) => {
-            document.getElementById('status').innerText = '뷰어가 연결되었습니다!';
+            document.getElementById('status').innerText = '내 폰(뷰어)과 연결되어 화면을 전송하고 있습니다!';
             call.answer(localStream);
           });
           
           peer.on('error', (err) => {
-            document.getElementById('status').innerText = '에러 발생: ' + err.type;
+            document.getElementById('status').innerText = '오류 발생: ' + err.type;
           });
         })
         .catch(err => {
-          document.getElementById('status').innerText = '카메라 연결 실패: ' + err.message;
+          document.getElementById('status').innerText = '카메라를 켤 수 없습니다. 권한을 허용해 주세요.';
         });
     }
 
     function startViewer() {
-      const id = prompt('연결할 CCTV ID를 입력해주세요:');
+      const id = prompt('연결할 CCTV ID를 입력하세요:');
       if (!id) return;
 
-      document.getElementById('status').innerText = 'CCTV에 연결을 시도하고 있습니다...';
+      document.getElementById('status').innerText = 'CCTV에 강력 연결 통로를 개설하는 중...';
       
-      // 뷰어 폰도 동일한 안정적 설정 적용
-      peer = new Peer(peerConfig);
+      peer = new Peer(config);
       
       peer.on('open', () => {
-        // 카메라 스트림 없이 영상만 받도록 호출
         const call = peer.call(id.trim(), null);
         
         call.on('stream', (remoteStream) => {
           const video = document.getElementById('videoElement');
           video.srcObject = remoteStream;
-          video.muted = false; // 뷰어에서는 소리가 들리도록 설정
-          document.getElementById('status').innerText = '실시간 CCTV 연결 성공!';
+          video.muted = false; // 뷰어폰에서는 소리가 나오도록 함
+          document.getElementById('status').innerText = '🥳 실시간 CCTV 연결 성공!';
         });
-        
-        setTimeout(() => {
-          if(document.getElementById('status').innerText.includes('시도')) {
-            document.getElementById('status').innerText = '연결 시간이 초과되었습니다. ID를 다시 확인하거나 신호 상태를 보세요.';
-          }
-        }, 10000);
       });
 
       peer.on('error', (err) => {
-        document.getElementById('status').innerText = '뷰어 에러 발생: ' + err.type;
+        document.getElementById('status').innerText = '연결 실패. ID를 다시 확인하거나 잠시 후 시도하세요.';
       });
     }
   </script>
