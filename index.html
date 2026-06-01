@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>CCTV App</title>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    video { width: 80%; max-width: 500px; border: 1px solid #ccc; }
+    #controls { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>CCTV App</h1>
+  <div id="controls">
+    <button onclick="startCamera()">Camera Mode</button>
+    <button onclick="startViewer()">Viewer Mode</button>
+  </div>
+  <div style="margin-top: 20px;">
+    <video id="videoElement" autoplay muted playsinline></video>
+  </div>
+  <p id="status"></p>
+  <p id="peerIdDisplay"></p>
+
+  <script>
+    let peer;
+    let localStream;
+
+    function startCamera() {
+      document.getElementById('status').innerText = 'Starting camera...';
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(stream => {
+          localStream = stream;
+          document.getElementById('videoElement').srcObject = stream;
+          
+          peer = new Peer();
+          peer.on('open', (id) => {
+            document.getElementById('peerIdDisplay').innerText = `Your CCTV ID: ${id}`;
+            document.getElementById('status').innerText = 'Camera is ready. Waiting for viewer...';
+          });
+
+          peer.on('call', (call) => {
+            call.answer(localStream);
+            document.getElementById('status').innerText = 'Viewer connected!';
+          });
+        })
+        .catch(err => {
+          document.getElementById('status').innerText = 'Camera error: ' + err;
+        });
+    }
+
+    function startViewer() {
+      const id = prompt('Enter the CCTV ID to connect:');
+      if (!id) return;
+
+      document.getElementById('status').innerText = 'Connecting to ' + id + '...';
+      peer = new Peer();
+      
+      peer.on('open', () => {
+        const call = peer.call(id, localStream);
+        call.on('stream', (remoteStream) => {
+          document.getElementById('videoElement').srcObject = remoteStream;
+          document.getElementById('status').innerText = 'Connected to CCTV!';
+        });
+      });
+    }
+  </script>
+</body>
+</html>
